@@ -2,7 +2,6 @@ from numpy.random import choice
 from os import walk
 from typing import Dict, List
 import matplotlib.pyplot as plt
-
 from PIL import Image
 
 

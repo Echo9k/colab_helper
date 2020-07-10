@@ -1,4 +1,4 @@
-from os import walk
+from os import mkdir, walk, path
 from typing import Tuple, Optional, Generator, Dict, List
 import tensorflow as tf
 from .ColabHelper import ColabHelper
@@ -50,13 +50,19 @@ def _mk_params(dir_key: str, file_url: str, img_directory: str) -> object:
     return params
 
 
+def _img_dir(img_directory):
+    if not path.exists(img_directory):
+        mkdir(img_directory)
+    return img_directory
+
+
 class GetData(ColabHelper):
     def __init__(self, dir_url: Dict[str, str] = None, class_names: [List] = None,
                  img_directory: str = './image_data'):
         super().__init__(dir_url, class_names, img_directory)
         self.dir_url = dir_url
-        self.class_names = class_names
-        self.img_directory = img_directory
+        self.class_names = (_list_folders, class_names)[class_names is None]
+        self.img_directory = _img_dir(img_directory)
 
     def download_unzip(self, as_generator=False) -> None or Generator:
         """
@@ -114,8 +120,6 @@ class GetData(ColabHelper):
                           'preprocessing_function': preprocessing_function
                           }
         img_gen = tf.keras.preprocessing.image.ImageDataGenerator(**img_gen_params)
-
-        self.class_names = _list_folders(self.img_directory)
 
         img_dir_params = {'directory': self.img_directory,
                           'image_data_generator': img_gen,
