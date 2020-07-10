@@ -7,9 +7,6 @@ from tensorflow.config import list_physical_devices
 from tensorflow.python.client import device_lib
 
 
-# from tensorflow_core.python.distribute.strategy_combinations import tpu_strategy
-
-
 # Hardware information
 def info(params=None):
     return device_lib.list_local_devices(params)

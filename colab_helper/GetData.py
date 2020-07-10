@@ -1,12 +1,10 @@
 from os import walk
 from typing import Tuple, Optional, Generator, Dict, List
-
 import tensorflow as tf
+from .ColabHelper import ColabHelper
 
-from .Colab_helper import Colab_helper
 
-
-def _list_folders(img_directory=None):
+def _list_folders(img_directory=None) -> List:
     """Get's all the folders on the img_directory.
 
     :param img_directory: The folder names inside a img_directory
@@ -14,7 +12,7 @@ def _list_folders(img_directory=None):
     """
     try:
         _, directories, _ = next(walk(img_directory))
-        return (None, directories)[len(directories) > 0]  # return directory names
+        return ([], directories)[len(directories) > 0]  # return directory names
     except StopIteration:
         'The attribute img_directory should be relative./"folder" or complete /.../"folder".'
     except NameError:
@@ -29,19 +27,19 @@ def _prevent_duplicates(dir_url, class_names, img_directory) -> Dict:
     :param img_directory:
     :return: dir{folder: URL}
     """
-    requested_folders = set(class_names)
+    classes_dir = set(dir_url)
     try:
-        folders_in_directory = set(_list_folders(img_directory))
-        to_ignore = requested_folders.intersection(folders_in_directory)  # Request already exist
-        to_download = set(dir_url).intersection(requested_folders - folders_in_directory)  # Requested but not in dir
-
-        if len(to_ignore) > 0:
-            print(f'Ignored: {to_ignore}.')
-        print(f'Download: {to_download}.')
-        return {i: dir_url.get(i) for i in to_download}
+        classes_in_directory = (set(_list_folders(img_directory)), set())[class_names is None]
     except TypeError:
-        print(f"no folders in: {img_directory})")
-        return dir_url
+        classes_in_directory = set()
+    requested_classes = (set(class_names), set())[class_names is None]
+    to_ignore = requested_classes.intersection(classes_in_directory)  # Request already exist
+    to_download = requested_classes.intersection(classes_dir) - to_ignore  # Requested but not in dir
+
+    if len(to_ignore) > 0:
+        print(f'Ignored: {to_ignore}.')
+    print(f'Download: {to_download}.')
+    return {i: dir_url.get(i) for i in to_download}
 
 
 def _mk_params(dir_key: str, file_url: str, img_directory: str) -> object:
@@ -52,7 +50,7 @@ def _mk_params(dir_key: str, file_url: str, img_directory: str) -> object:
     return params
 
 
-class GetData(Colab_helper):
+class GetData(ColabHelper):
     def __init__(self, dir_url: Dict[str, str] = None, class_names: [List] = None,
                  img_directory: str = './image_data'):
         super().__init__(dir_url, class_names, img_directory)

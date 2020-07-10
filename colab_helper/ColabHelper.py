@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 from PIL import Image
 
 
-class Colab_helper:
+class ColabHelper:
     def __init__(self, dir_url: Dict[str, str] = None, class_names: [List] = None, input_directory: str = '/content',
                  subdirectory: str = '/stego_images'):
         self.dir_url = dir_url
