@@ -2,7 +2,6 @@ from numpy.random import choice
 from os import walk
 from typing import Dict, List
 import matplotlib.pyplot as plt
-
 from PIL import Image
 
 
@@ -10,14 +9,14 @@ class ColabHelper:
     def __init__(self, dir_url: Dict[str, str] = None, class_names: [List] = None, input_directory: str = '/content',
                  subdirectory: str = '/stego_images'):
         self.dir_url = dir_url
-        self.class_names = class_names
+        self.list_classes = class_names
         self.img_directory = input_directory + subdirectory
 
     def _deduce_class_names(self):
-        if self.class_names is None:
+        if self.list_classes is None:
             directories: List[str]
             _, directories, _ = next(walk(self.img_directory))
-            self.class_names = (None, directories)[len(directories) > 0]
+            self.list_classes = (None, directories)[len(directories) > 0]
 
     @staticmethod
     def _unique_files(dir_url, img_directory, class_names) -> Dict:
@@ -44,16 +43,16 @@ class ColabHelper:
         """ Comparing images from the different classes."""
         self._deduce_class_names()
 
-        _, _, img_names = next(walk(self.img_directory + self.class_names[0]))
+        _, _, img_names = next(walk(self.img_directory + self.list_classes[0]))
         img_list = list(choice(img_names, size, False))
 
-        fig, ax = plt.subplots(nrows=len(self.class_names), ncols=size, figsize=(20, 14))
+        fig, ax = plt.subplots(nrows=len(self.list_classes), ncols=size, figsize=(20, 14))
 
         for i, row in enumerate(ax):
             for j, col in enumerate(row):
-                img = Image.open(self.img_directory + self.class_names[i] + '/' + img_list[j])
+                img = Image.open(self.img_directory + self.list_classes[i] + '/' + img_list[j])
                 col.set_axis_off()
                 col.imshow(img)
-                col.set_title(self.class_names[i] + " " + img_list[j])
+                col.set_title(self.list_classes[i] + " " + img_list[j])
         plt.suptitle('Display the Cover image and 3 stego images of the different algorithms')
         plt.show()
