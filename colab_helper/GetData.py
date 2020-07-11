@@ -31,18 +31,14 @@ def _prevent_duplicates(dir_url, list_classes, img_directory) -> Dict:
     list_labels = _list_folders(img_directory)
     classes_in_directory = (set(), set(list_labels))[len(list_labels) > 0]
 
-    try:
+    if list_classes is not None:
         requested_classes = set(list_classes)
-    except TypeError:
-        requested_classes = set()
-
-    to_ignore = requested_classes.intersection(classes_in_directory)  # Request already exist
-    to_download = classes_dir.intersection(requested_classes) - to_ignore  # Requested but not in dir
+        to_download = classes_dir.intersection(requested_classes) - classes_in_directory  # Requested but not in dir
+    else:
+        to_download = classes_dir - classes_in_directory  # Requested but not in dir
 
     if len(classes_in_directory) > 0:
         print(f"Folders found {classes_in_directory}")
-    if len(to_ignore) > 0:
-        print(f'Requests to ignore: {to_ignore}\n')
 
     print(f'Downloading: {to_download}.')
     return {i: dir_url.get(i) for i in to_download}
@@ -62,13 +58,14 @@ class GetData(ColabHelper):
         self.img_directory = _img_dir(img_directory)
         self.list_classes = (list_classes, _list_folders(img_directory))[list_classes is None]
 
-    def download_unzip(self, archive_format = 'auto', extract=True,as_generator=False) -> None or Generator:
+    def download_unzip(self, archive_format='auto', extract=True, as_generator=False) -> None or Generator:
         """
         Downloads data from the dir_url of the form {category, url}.
         Stores each folder under img_directory/category/
 
         PARAMETERS:
-        :param archive_format: Archive format to try for extracting the file. Options are 'auto', 'tar', 'zip', and None.
+        :param extract:
+        :param archive_format:Archive format to try for extracting the file. Options are 'auto', 'tar', 'zip', and None.
                         'tar' includes tar, tar.gz, and tar.bz files.
                         The default 'auto' corresponds to ['tar', 'zip'].
                         None or an empty list will return no matches found.
