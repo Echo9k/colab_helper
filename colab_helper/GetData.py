@@ -93,6 +93,7 @@ class GetData(ColabHelper):
                   subset: Optional[str] = 'training', *,
                   validation_split: Optional[int] = 0.3,
                   class_mode: Optional[int] = 'categorical',
+                  list_classes: Optional[List] = self.list_classes,
                   preprocessing_function=None) -> tf.keras.preprocessing.image.DirectoryIterator:
         """
         :int batch_size: size of the batches of data (default: 32)
@@ -124,7 +125,7 @@ class GetData(ColabHelper):
                           'image_data_generator': img_gen,
                           'target_size': target_size,
                           'color_mode': 'rgb',
-                          'classes': self.list_classes,
+                          'classes': list_classes,
                           'class_mode': class_mode,
                           'batch_size': batch_size,
                           'shuffle': True
