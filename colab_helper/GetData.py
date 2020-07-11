@@ -1,6 +1,7 @@
 from os import mkdir, walk, path
 from typing import Tuple, Optional, Generator, Dict, List
-import tensorflow as tf
+from tensorflow.keras.utils import get_file
+from tensorflow.keras.preprocessing.image import ImageDataGenerator, DirectoryIterator
 from .ColabHelper import ColabHelper
 
 
@@ -50,38 +51,26 @@ def _img_dir(img_directory):
     return img_directory
 
 
-def img_generator(validation_split=0.3,
-                  samplewise_center=True,
-                  samplewise_std_normalization=True, *,
-                  featurewise_center=False,
-                  featurewise_std_normalization=False,
-                  zca_whitening=False,
-                  fill_mode='reflect',
-                  horizontal_flip=True,
-                  vertical_flip=True,
-                  additional_preprocessing=None):
-    img_gen_params = {'featurewise_center': featurewise_center,
-                      'samplewise_center': samplewise_center,
-                      'featurewise_std_normalization': featurewise_std_normalization,
-                      'samplewise_std_normalization': samplewise_std_normalization,
-                      'zca_whitening': zca_whitening,
-                      'fill_mode': fill_mode,
-                      'horizontal_flip': horizontal_flip,
-                      'vertical_flip': vertical_flip,
-                      'validation_split': validation_split,
-                      'additional_preprocessing': additional_preprocessing
-                      }
-    return tf.keras.preprocessing.image.ImageDataGenerator(**img_gen_params)
-
-
 class GetData(ColabHelper):
-    def __init__(self, dir_url: Dict[str, str] = None, class_names: [List] = None,
-                 img_directory: str = './image_files'):
+    def __init__(self, dir_url: Dict[str, str] = None, class_names: Optional[List] = None,
+                 img_directory: str = './image_files', **kwargs):
         super().__init__(dir_url, class_names, img_directory)
         self.dir_url = dir_url
         self.img_directory = _img_dir(img_directory)
+        self.target_size = (512, 512)
+        self.batch_size = 32
         self.class_names = (class_names, _list_folders(img_directory))[class_names is None]
-        self.batch_size = None
+        for k, v in kwargs.items():
+            setattr(self, k, v)
+
+    @classmethod
+    def img_generator(cls, validation_split=0.3,
+                      samplewise_center=True,
+                      samplewise_std_normalization=True, **kwargs):
+        return ImageDataGenerator(validation_split=validation_split,
+                                  samplewise_center=samplewise_center,
+                                  samplewise_std_normalization=samplewise_std_normalization,
+                                  **kwargs)
 
     def download_unzip(self, archive_format='auto', extract=True, as_generator=False) -> None or Generator:
         """
@@ -104,42 +93,43 @@ class GetData(ColabHelper):
         try:
             if not as_generator:
                 for key, url in to_download.items():
-                    tf.keras.utils.get_file(key, url,
-                                            extract=extract,
-                                            archive_format=archive_format,
-                                            cache_subdir=self.img_directory + key)
+                    get_file(key, url,
+                             extract=extract,
+                             archive_format=archive_format,
+                             cache_subdir=self.img_directory + key)
             else:
-                return (tf.keras.utils.get_file(key, url) for key, url in self.dir_url.items() if key in to_download)
+                return (get_file(key, url) for key, url in self.dir_url.items() if key in to_download)
         except TypeError:
             print(f"All the requested folders already exist on '{self.img_directory}'")
 
-    def img_batch(self, batch_size: Optional[int] = 32,
-                  target_size: Optional[Tuple] = (256, 256),
-                  class_names: Optional[List] = None,
-                  subset: Optional[str] = 'training', *,
-                  class_mode: Optional[str] = 'categorical',
-                  image_data_generator='default') -> tf.keras.preprocessing.image.DirectoryIterator:
+    def img_batch(self, batch_size=None, target_size: Tuple[int, int] = None, subset='training', *,
+                  class_mode='categorical', image_data_generator=None, **kwargs) -> DirectoryIterator:
 
         """ generates a batch of preprocessed data using the image_data_generator
-        :param batch_size: size of the batches of data (default: 32)
-        :param target_size: size of the output images.
-        :param class_names:
+
+
+        :param target_size: tuple of integers, dimensions to resize input images to.
+        :param batch_size: Integer, size of a batch.
         :param subset: Options "training", "validation".
         :param class_mode: Type of classification for this flow of data
-<           - binary:if there are only two classes
-            - categorical: categorical targets,
-            - sparse: integer targets,
-            - input: targets are images identical to input images (mainly used to work with autoencoders),
-            - None: no targets get yielded (only input images are yielded).
+        - binary:if there are only two classes
+        - categorical: categorical targets,
+        - sparse: integer targets,
+        - input: targets are images identical to input images (mainly used to work with autoencoders),
+        - None: no targets get yielded (only input images are yielded).
         :param image_data_generator: preconfigured tf.keras.preprocessing.image.ImageDataGenerator
-
         :return DirectoryIterator"""
 
-        image_data_generator = img_generator() if (image_data_generator == 'default') else image_data_generator
-        assert isinstance(image_data_generator, tf.keras.preprocessing.image.ImageDataGenerator)
-
-        img_dir_params = dict(directory=self.img_directory, image_data_generator=image_data_generator,
-                              target_size=target_size, color_mode='rgb', classes=class_names,
-                              class_mode=class_mode, batch_size=batch_size, shuffle=True)
-        print(subset + ':')
-        return tf.keras.preprocessing.image.DirectoryIterator(**img_dir_params, subset=subset)
+        print(f"{subset} : ")
+        batch_size = self.batch_size if batch_size is None else batch_size
+        target_size = self.target_size if target_size is None else target_size
+        image_data_generator = self.img_generator() if image_data_generator is None else image_data_generator
+        return DirectoryIterator(directory=self.img_directory,
+                                 batch_size=batch_size,
+                                 target_size=target_size,
+                                 subset=subset,
+                                 class_mode=class_mode,
+                                 classes=self.class_names,
+                                 interpolation='reflect',
+                                 image_data_generator=image_data_generator,
+                                 **kwargs)
