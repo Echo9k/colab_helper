@@ -19,11 +19,11 @@ def _list_folders(img_directory=None) -> List:
         "The specified directory doesn't exist yet"
 
 
-def _prevent_duplicates(dir_url, list_classes, img_directory) -> Dict:
+def _prevent_duplicates(dir_url, class_names, img_directory) -> Dict:
     """
     From the dir{folder, url} grabs the requested folders and filters out the existent directories.
     :param dir_url:
-    :param list_classes:
+    :param class_names:
     :param img_directory:
     :return: dir{folder: URL}
     """
@@ -31,8 +31,8 @@ def _prevent_duplicates(dir_url, list_classes, img_directory) -> Dict:
     list_labels = _list_folders(img_directory)
     classes_in_directory = (set(), set(list_labels))[len(list_labels) > 0]
 
-    if list_classes is not None:
-        requested_classes = set(list_classes)
+    if class_names is not None:
+        requested_classes = set(class_names)
         to_download = classes_dir.intersection(requested_classes) - classes_in_directory  # Requested but not in dir
     else:
         to_download = classes_dir - classes_in_directory  # Requested but not in dir
@@ -50,13 +50,38 @@ def _img_dir(img_directory):
     return img_directory
 
 
+def img_generator(validation_split=0.3,
+                  samplewise_center=True,
+                  samplewise_std_normalization=True, *,
+                  featurewise_center=False,
+                  featurewise_std_normalization=False,
+                  zca_whitening=False,
+                  fill_mode='reflect',
+                  horizontal_flip=True,
+                  vertical_flip=True,
+                  additional_preprocessing=None):
+    img_gen_params = {'featurewise_center': featurewise_center,
+                      'samplewise_center': samplewise_center,
+                      'featurewise_std_normalization': featurewise_std_normalization,
+                      'samplewise_std_normalization': samplewise_std_normalization,
+                      'zca_whitening': zca_whitening,
+                      'fill_mode': fill_mode,
+                      'horizontal_flip': horizontal_flip,
+                      'vertical_flip': vertical_flip,
+                      'validation_split': validation_split,
+                      'additional_preprocessing': additional_preprocessing
+                      }
+    return tf.keras.preprocessing.image.ImageDataGenerator(**img_gen_params)
+
+
 class GetData(ColabHelper):
-    def __init__(self, dir_url: Dict[str, str] = None, list_classes: [List] = None,
+    def __init__(self, dir_url: Dict[str, str] = None, class_names: [List] = None,
                  img_directory: str = './image_files'):
-        super().__init__(dir_url, list_classes, img_directory)
+        super().__init__(dir_url, class_names, img_directory)
         self.dir_url = dir_url
         self.img_directory = _img_dir(img_directory)
-        self.list_classes = (list_classes, _list_folders(img_directory))[list_classes is None]
+        self.class_names = (class_names, _list_folders(img_directory))[class_names is None]
+        self.batch_size = None
 
     def download_unzip(self, archive_format='auto', extract=True, as_generator=False) -> None or Generator:
         """
@@ -75,7 +100,7 @@ class GetData(ColabHelper):
 
         :return: None, or a generator if asGenerator is set to True.
         """
-        to_download = _prevent_duplicates(self.dir_url, self.list_classes, self.img_directory)
+        to_download = _prevent_duplicates(self.dir_url, self.class_names, self.img_directory)
         try:
             if not as_generator:
                 for key, url in to_download.items():
@@ -90,46 +115,31 @@ class GetData(ColabHelper):
 
     def img_batch(self, batch_size: Optional[int] = 32,
                   target_size: Optional[Tuple] = (256, 256),
+                  class_names: Optional[List] = None,
                   subset: Optional[str] = 'training', *,
-                  validation_split: Optional[int] = 0.3,
-                  class_mode: Optional[int] = 'categorical',
-                  list_classes: Optional[List] = None,
-                  preprocessing_function=None) -> tf.keras.preprocessing.image.DirectoryIterator:
-        """
-        :int batch_size: size of the batches of data (default: 32)
-        :tuple target_size: size of the output images.
-        :str subset: `"training"` or `"validation"`.
-        :float validation_split = A percentage of data to use as validation set.
-        :str class_mode: Type of classification for this flow of data
-            - binary:if there are only two classes
+                  class_mode: Optional[str] = 'categorical',
+                  image_data_generator='default') -> tf.keras.preprocessing.image.DirectoryIterator:
+
+        """ generates a batch of preprocessed data using the image_data_generator
+        :param batch_size: size of the batches of data (default: 32)
+        :param target_size: size of the output images.
+        :param class_names:
+        :param subset: Options "training", "validation".
+        :param class_mode: Type of classification for this flow of data
+<           - binary:if there are only two classes
             - categorical: categorical targets,
             - sparse: integer targets,
             - input: targets are images identical to input images (mainly used to work with autoencoders),
             - None: no targets get yielded (only input images are yielded).
-        """
+        :param image_data_generator: preconfigured tf.keras.preprocessing.image.ImageDataGenerator
 
-        img_gen_params = {'featurewise_center': False,
-                          'samplewise_center': True,
-                          'featurewise_std_normalization': False,
-                          'samplewise_std_normalization': True,
-                          'zca_whitening': False,
-                          'fill_mode': 'reflect',
-                          'horizontal_flip': True,
-                          'vertical_flip': True,
-                          'validation_split': validation_split,
-                          'preprocessing_function': preprocessing_function
-                          }
-        img_gen = tf.keras.preprocessing.image.ImageDataGenerator(**img_gen_params)
+        :return DirectoryIterator"""
 
-        img_dir_params = {'directory': self.img_directory,
-                          'image_data_generator': img_gen,
-                          'target_size': target_size,
-                          'color_mode': 'rgb',
-                          'classes': list_classes,
-                          'class_mode': class_mode,
-                          'batch_size': batch_size,
-                          'shuffle': True
-                          }
+        image_data_generator = img_generator() if (image_data_generator == 'default') else image_data_generator
+        assert isinstance(image_data_generator, tf.keras.preprocessing.image.ImageDataGenerator)
+
+        img_dir_params = dict(directory=self.img_directory, image_data_generator=image_data_generator,
+                              target_size=target_size, color_mode='rgb', classes=class_names,
+                              class_mode=class_mode, batch_size=batch_size, shuffle=True)
         print(subset + ':')
-
         return tf.keras.preprocessing.image.DirectoryIterator(**img_dir_params, subset=subset)
