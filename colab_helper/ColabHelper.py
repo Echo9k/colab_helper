@@ -7,13 +7,13 @@ import tensorflow as tf
 
 
 class ColabHelper:
-    def __init__(self, dir_url: Dict[str, str] = None,
-                 class_names: [List] = None,
-                 input_directory: str = '/image_files'):
-
+    def __init__(self, dir_url: Dict[str, str] = None, class_names: [List] = None,
+                 input_directory: str = '/image_files', **kwargs):
         self.dir_url = dir_url
         self.class_names = class_names
         self.img_directory = input_directory
+        for k, v in kwargs.items():
+            setattr(self, k, v)
 
     def _deduce_class_names(self):
         if self.class_names is None:
