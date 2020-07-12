@@ -51,6 +51,15 @@ def _img_dir(img_directory):
     return img_directory
 
 
+def img_generator(validation_split=0.3,
+                  samplewise_center=True,
+                  samplewise_std_normalization=True, **kwargs):
+    return tf.keras.preprocessing.image.ImageDataGenerator(validation_split=validation_split,
+                                                           samplewise_center=samplewise_center,
+                                                           samplewise_std_normalization=samplewise_std_normalization,
+                                                           **kwargs)
+
+
 class GetData(ColabHelper):
     def __init__(self, dir_url: Dict[str, str] = None, class_names: Optional[List] = None,
                  img_directory: str = './image_files', **kwargs):
