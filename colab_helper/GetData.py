@@ -51,6 +51,15 @@ def _img_dir(img_directory):
     return img_directory
 
 
+def img_generator(validation_split=0.3,
+                  samplewise_center=True,
+                  samplewise_std_normalization=True, **kwargs):
+    return ImageDataGenerator(validation_split=validation_split,
+                              samplewise_center=samplewise_center,
+                              samplewise_std_normalization=samplewise_std_normalization,
+                              **kwargs)
+
+
 class GetData(ColabHelper):
     def __init__(self, dir_url: Dict[str, str] = None, class_names: Optional[List] = None,
                  img_directory: str = './image_files', **kwargs):
@@ -66,10 +75,32 @@ class GetData(ColabHelper):
     @classmethod
     def img_generator(cls, validation_split=0.3,
                       samplewise_center=True,
-                      samplewise_std_normalization=True, **kwargs):
+                      samplewise_std_normalization=True, **kwargs) -> ImageDataGenerator:
+        """ Returns a data generator which already preprocess data.
+        samplewise_std_normalization	Boolean. Divide each input by its std.
+        samplewise_center	Boolean. Set each sample mean to 0.
+
+        ADDITIONAL PARAMETERS:
+        rotation_range	Int. Degree range for random rotations.
+        fill_mode	One of {"constant", "nearest", "reflect" or "wrap"}. Default is 'nearest'.
+            Points outside the boundaries of the input are filled according to the given mode:
+            'constant': kkkkkkkk|abcd|kkkkkkkk (cval=k)
+            'nearest': aaaaaaaa|abcd|dddddddd
+            'reflect': abcddcba|abcd|dcbaabcd
+            'wrap': abcdabcd|abcd|abcdabcd
+
+        preprocessing_function:
+        validation_split	Float. Fraction of images reserved for validation (strictly between 0 and 1).
+        dtype	Dtype to use for the generated arrays.
+
+        More: https://www.tensorflow.org/api_docs/python/tf/keras/preprocessing/image/ImageDataGenerator?version=nightly
+        """
+        fill_mode = 'reflelct' if (kwargs.get('fill_mode') is None) else kwargs.get('fill_mode')
+
         return ImageDataGenerator(validation_split=validation_split,
                                   samplewise_center=samplewise_center,
                                   samplewise_std_normalization=samplewise_std_normalization,
+                                  fill_mode=fill_mode,
                                   **kwargs)
 
     def download_unzip(self, archive_format='auto', extract=True, as_generator=False) -> None or Generator:
@@ -130,6 +161,5 @@ class GetData(ColabHelper):
                                  subset=subset,
                                  class_mode=class_mode,
                                  classes=self.class_names,
-                                 interpolation='reflect',
                                  image_data_generator=image_data_generator,
                                  **kwargs)
